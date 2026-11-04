@@ -3,7 +3,7 @@ import {createRoot} from 'react-dom/client';
 import {Button, Header, Label, ListBox, ListBoxItem, ListBoxSection, Popover, Select, SelectStateContext, SelectValue} from 'react-aria-components';
 import {announce} from '@react-aria/live-announcer';
 
-// Mirrors the change in adobe/react-spectrum#10871 (useSelect): announce the option
+// English-only approximation of adobe/react-spectrum#10871 (useSelect): announce the option
 // count when the popover opens, including when an option already has focus on Apple
 // devices (VoiceOver doesn't read "1 of N" there). Uses the same countAnnouncement wording.
 function isAppleDevice() {
@@ -19,6 +19,11 @@ function countItems(collection) {
 }
 function PatchedAnnouncer({onAnnounce}) {
   let state = useContext(SelectStateContext);
+  // Select also renders its children in a hidden collection-building tree,
+  // outside the state provider. Only mount the effect for the live Select.
+  return state ? <SelectAnnouncer state={state} onAnnounce={onAnnounce} /> : null;
+}
+function SelectAnnouncer({state, onAnnounce}) {
   let count = countItems(state.collection);
   let lastOpen = useRef(state.isOpen);
   let lastSize = useRef(count);
@@ -40,7 +45,7 @@ function Demo({patched}) {
   let [log, setLog] = useState([]);
   return (
     <section style={{flex: 1, padding: 16, border: '1px solid #ccc', borderRadius: 8}}>
-      <h2>{patched ? 'With fix (PR #10871)' : 'Current behavior'}</h2>
+      <h2>{patched ? 'Count-announcement demo (PR #10871)' : 'Baseline (react-aria-components 1.22.1)'}</h2>
       <Select defaultSelectedKey="cat">
         <Label style={{display: 'block'}}>Favorite Animal</Label>
         <Button><SelectValue /> <span aria-hidden="true">▼</span></Button>
@@ -56,7 +61,7 @@ function Demo({patched}) {
           </ListBox>
         </Popover>
       </Select>
-      <p><strong>Live announcements:</strong></p>
+      <p><strong>Demo helper announcements:</strong></p>
       <ul>{log.length ? log.map((m, i) => <li key={i}>{m}</li>) : <li>(none)</li>}</ul>
     </section>
   );
@@ -65,7 +70,8 @@ function Demo({patched}) {
 createRoot(document.getElementById('root')).render(
   <div style={{fontFamily: 'sans-serif', padding: 16}}>
     <h1>adobe/react-spectrum #10871: Select option count announcement</h1>
-    <p>Focus a Select and open it (Space). With VoiceOver on macOS Safari, the left side gives no count; the right side announces "5 options available." even though the selected option is focused. Announcements are also logged below each Select.</p>
+    <p>Focus a Select and open it with Space. The left side uses the unmodified published package. On Apple devices, the right side adds "5 options available." even when the selected option is focused.</p>
+    <p>This is an English-only approximation of the PR's announcement effect, not a build of the upstream patch. The log records calls from the demo helper, not screen-reader speech. To assess the accessibility behavior, compare both sides with VoiceOver in macOS Safari; that manual check has not been performed here.</p>
     <div style={{display: 'flex', gap: 16}}><Demo patched={false} /><Demo patched /></div>
   </div>
 );
